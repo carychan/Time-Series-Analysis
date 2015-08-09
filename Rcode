@@ -1,0 +1,64 @@
+########################ARIMA model.###########################
+install.packages("forecast")
+library(forecast)
+
+#data input.
+data1<-read.table(file=
+"D:/data_shabank.csv",
+header=TRUE,sep= ",",dec=".",na.string="NA")
+
+#Turn data into the form of time series.
+data1<-data.frame(gdpgrowth,cpi,M1,ShaBank)
+data1_ts<-ts(data1,start=c(2004,1),end=c(2013,12),frequency=12)
+plot.ts(data1_ts)
+acf(data1_ts)
+pacf(data1_ts)
+
+#Build the model.
+ARIMA_model<-auto.arima(data1_ts)
+summary(ARIMA_model)
+
+#Boxtest
+resid<-ARIMA_model$residual
+Result<-0
+LAG<-0
+LB<-0
+p<-0
+for(i in 1:12){
+Btest=Box.test(resid,type=c("Box-Pierce","Ljung-Box"),lag=i)
+LAG[i]=i
+LB[i]=Btest$statistic
+p[i]=Btest$p.value
+Result=cbind(LAG,LB,p)
+}
+Result
+
+#Forecast.
+pre2<-forecast.Arima(ARIMA_model,h=12,level=c(0.95))
+pre2
+plot.forecast(pre2)
+
+###########################VAR model.################################
+install.packages("vars")
+library(vars)
+
+#Build a VAR model.
+VARselect(data2ts,lag.max=12,type ="both") #The choise of the VAR model. 
+model1=VAR(data2ts,p=12,type="both") #Build the model with p=12.
+summary(model1)
+
+#Impulse analysis
+#The impulse of gdpgrowth towards cpi,M1,ShadowBank
+imput1<-irf(model1, impulse="gdpgrowth", response = c("cpi", "M1",
+"ShaBank"), boot =FALSE,n.head=12)
+
+#The impulse of cpi towards gdpgrowth,M1,ShadowBank
+imput2<-irf(model1,impulse="cpi", response=c("gdpgrowth", "M1",
+"ShaBank"), n.ahead =12, boot =FALSE) 
+
+#The impulse of M1 towards cpi,gdpgrowth,ShadowBank 
+imput3<-irf(model1,impulse = "M1", response = c("cpi", "gdpgrowth",
+"ShaBank"), n.ahead = 12,boot =FALSE)
+#The impulse of ShadowBank towards cpi,M1,gdpgrowth
+imput4<-irf(model1,impulse = "ShaBank", response = c("cpi", "M1",
+"gdpgrowth"),n.ahead = 12, boot =FALSE)
